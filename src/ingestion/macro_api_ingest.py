@@ -5,7 +5,7 @@ from pyjstat import pyjstat
 from fredapi import Fred
 from pyspark.sql.functions import col
 
-from load_config import load_config
+from src.ingestion.load_config import load_config
 
 config = load_config()
 UK_UNEMPLOYMENT_URL = config["uk_employment"]["url"]
@@ -13,7 +13,7 @@ UK_CPI_URL = config["uk_cpi"]["url"]
 FED_KEY = config["fred_api"]["key"]
 fred = Fred(api_key=FED_KEY)
 
-def fetch_unemployment_data_uk():
+def fetch_unemployment_data_uk(spark):
     '''fetch unemployment data from nomis API'''
     response = requests.get(UK_UNEMPLOYMENT_URL)
 
@@ -24,11 +24,11 @@ def fetch_unemployment_data_uk():
     return unemployment_df
 
 
-def fetch_cpi_data_uk():
+def fetch_cpi_data_uk(spark):
     '''fetch inflation rates from ONS API monthly / quarterly / yearly'''
     response = requests.get(UK_CPI_URL)
     data = response.text
-    print(data.split('Important notes",')[1])
+    
     raw_data = data.split('Important notes",')[1]
 
     lines = raw_data.strip().split('\n')
@@ -42,7 +42,7 @@ def fetch_cpi_data_uk():
     return full_cpi_df
 
 
-def fetch_fed_gdp():
+def fetch_fed_gdp(spark):
     '''fetch gdp data from FRED API'''
     gdp = fred.get_series('GDP')
     gdp = gdp.reset_index()
@@ -51,7 +51,7 @@ def fetch_fed_gdp():
     return gdp
 
 
-def fetch_fed_cpi():
+def fetch_fed_cpi(spark):
     '''fetch cpi data from FRED API'''
     cpi = fred.get_series('CPIAUCSL') 
     cpi = cpi.reset_index()
@@ -60,7 +60,7 @@ def fetch_fed_cpi():
     return cpi
 
 
-def fetch_fed_interest_rate():
+def fetch_fed_interest_rate(spark):
     '''fetch interest rate data from FRED API'''
     fed_rate = fred.get_series('FEDFUNDS')
     fed_rate = fed_rate.reset_index()
@@ -69,7 +69,7 @@ def fetch_fed_interest_rate():
     return fed_rate
 
 
-def fetch_fed_unemployment():
+def fetch_fed_unemployment(spark):
     '''fetch unemployment rate data from FRED API'''
     unrate = fred.get_series('UNRATE')
     unrate = unrate.reset_index()

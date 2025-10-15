@@ -1,0 +1,6 @@
+confluent_kafka
+yfinance
+fredapi
+pyjstat
+xlrd==2.0.1
+openpyxl
