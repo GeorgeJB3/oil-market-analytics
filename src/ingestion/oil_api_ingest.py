@@ -4,7 +4,7 @@ import json
 
 from confluent_kafka import Producer
 
-from load_config import load_config, read_client
+from src.ingestion.load_config import load_config, read_client
 
 
 def handle_status(code, status_code, logger): 
