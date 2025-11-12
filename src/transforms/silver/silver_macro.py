@@ -1,0 +1,8 @@
+uk_unemployment_df = spark.table("oil_analytics.bronze_uk_unemployment")
+uk_cpi_df = spark.table("oil_analytics.bronze_uk_cpi")
+uk_gdp_df = spark.table("oil_analytics.bronze_uk_gdp")
+uk_interest_rate_df = spark.table("oil_analytics.bronze_uk_interest_rate")
+fed_unemployment_df = spark.table("oil_analytics.bronze_fed_unemployment")
+fed_cpi_df = spark.table("oil_analytics.bronze_fed_cpi")
+fed_gdp_df = spark.table("oil_analytics.bronze_fed_gdp")
+fed_interest_rate_df = spark.table("oil_analytics.bronze_fed_interest_rate")
