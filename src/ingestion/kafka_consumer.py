@@ -1,9 +1,9 @@
 from confluent_kafka import Consumer
 
-from src.ingestion.load_config import read_client
+from load_config import read_client
 
 
-def energy_consumer(spark):
+def energy_consumer():
     """
     Consume up to 50 messages from Kafka topic within 10 second timeout.
     Suitable for Airflow batch jobs.

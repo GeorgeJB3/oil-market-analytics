@@ -4,7 +4,7 @@ import json
 
 from confluent_kafka import Producer
 
-from src.ingestion.load_config import load_config, read_client
+from load_config import load_config, read_client
 
 
 def handle_status(code, status_code, logger): 
@@ -63,8 +63,6 @@ def fetch_oil_prices(spark, topic="energy_prices"):
         logger.info(f"Produced {code} to {topic}.")
       else:
         return handle_status(code, response.status_code, logger)
-    except requests.exceptions.ConnectionError as ce:
-      logger.error(f"Connection error: {ce}")
     except requests.exceptions.RequestException as e:
       logger.error(f"Error fetching oil prices: {e}")
 
