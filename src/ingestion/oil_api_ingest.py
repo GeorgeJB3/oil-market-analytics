@@ -63,6 +63,8 @@ def fetch_oil_prices(spark, topic="energy_prices"):
         logger.info(f"Produced {code} to {topic}.")
       else:
         return handle_status(code, response.status_code, logger)
+    except requests.exceptions.ConnectionError as ce:
+      logger.error(f"Connection error: {ce}")
     except requests.exceptions.RequestException as e:
       logger.error(f"Error fetching oil prices: {e}")
 

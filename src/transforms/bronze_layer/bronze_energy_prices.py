@@ -9,7 +9,7 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 
 def create_bronze_energy_prices(spark):
     """
-    Create bronze_energy_prices table.
+    Create bronze energy prices table.
         schema: oil_analytics
         table: bronze_energy_prices
     """
