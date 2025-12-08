@@ -5,8 +5,15 @@ from src.ingestion.load_config import read_client
 
 def energy_consumer(spark):
     """
-    Consume up to 50 messages from Kafka topic within 10 second timeout.
-    Suitable for Airflow batch jobs.
+    Consume messages from the Kafka 'energy_prices' topic and return them as a Spark DataFrame.
+
+    Connects to Kafka using client configuration, subscribes to the energy prices topic,
+    and attempts to consume up to 50 messages within a 10 second timeout window. Each
+    message is decoded into key/value pairs and collected into a Spark DataFrame for
+    downstream processing. Suitable for batch ingestion jobs (e.g., Airflow).
+
+    Args:
+        spark (SparkSession): Active Spark session used to create the resulting DataFrame.
 
     Returns:
     +---------------+--------------------+--------------------+

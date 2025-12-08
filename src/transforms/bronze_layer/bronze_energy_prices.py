@@ -9,9 +9,17 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 
 def create_bronze_energy_prices(spark):
     """
-    Create bronze energy prices table.
-        schema: oil_analytics
-        table: bronze_energy_prices
+    Build the bronze energy prices table.
+
+    Consumes raw messages from Kafka, parses the JSON payload into a
+    structured format, adds ingestion metadata, and selects key fields
+    like code, price, currency, and timestamps. The processed data is
+    stored in the bronze-level table `oil_analytics.bronze_energy_prices`.
+
+    Args:
+        spark (SparkSession): Active Spark session used to read from
+            Kafka and write to Delta tables.
+
     """
     
     SCHEMA_NAME = "oil_analytics"
@@ -64,8 +72,15 @@ def create_bronze_energy_prices(spark):
 
 def generate_bronze_energy_price_table(spark):
     """
-    Invoke producer to ingest energy price data.
-    Then consumer to write to the table.
+    End-to-end ingestion for energy prices.
+
+    Calls the producer to fetch oil and gas prices from the API and
+    publish them to Kafka, then runs the consumer logic to parse and
+    save the data into the bronze table.
+
+    Args:
+        spark (SparkSession): Active Spark session used to run the
+            ingestion and persistence steps.
     """
     fetch_oil_prices(spark, "energy_prices")
     create_bronze_energy_prices(spark)

@@ -13,32 +13,34 @@ UK_INTEREST = "bronze_uk_interest_rate"
 
 def bronze_uk_gdp(spark):
     """
-    Loads and stores UK Bank of England gdp data into the bronze layer.
-
-    Reads all xlsx files from `data/bank_of_england/gdp`, combines them
-    into a single Pandas DataFrame, casts all values to strings to preserve raw
-    structure, converts to a Spark DataFrame, and writes it to the bronze Delta table.
+    Loads and stores UK GDP data, from world bank group into the bronze layer.
+    
+    Reads the csv file from `data/uk_gdp` into a pandas dataframe. Filters for only United Kingdom data.
+    Unpivots the dataframe sp we have each year and gdp rate as a separate row.
+    Converts to a Spark DataFrame, and writes it to the bronze Delta table.
 
     Args:
         spark (SparkSession): Active Spark session used for writing the data.
     """
-    base_path = os.path.join(os.path.dirname(__file__), "../../../data/bank_of_england/gdp")
-    excel_files = glob.glob(os.path.join(base_path, "*"))
+    uk_gdp_file = os.path.abspath("../data/uk_gdp/API_NY.GDP.MKTP.KD.ZG_DS2_en_csv_v2_301919.csv")
+    gdp_df = pd.read_csv(uk_gdp_file, header=0)
+    gdp_df = gdp_df[gdp_df["Country Name"] == "United Kingdom"]
 
-    all_dfs = []
-    for file in excel_files:
-        df = pd.read_excel(file, engine="openpyxl")
-        all_dfs.append(df)
-        
-    combined_df = pd.concat(all_dfs, ignore_index=True)
-    combined_df = combined_df.astype(str)
+    unpivot_df = gdp_df.melt(
+        id_vars = ["Country Name", "Country Code", "Indicator Name", "Indicator Code"],
+        var_name = "year",
+        value_name = "gdp_rate_%"
+    )
+    sdf = spark.createDataFrame(unpivot_df)
+    bronze_df = sdf \
+        .withColumnRenamed("Country Name", "country_name") \
+        .withColumnRenamed("Country Code", "country_code") \
+        .withColumnRenamed("Indicator Name", "indicator_name") \
+        .withColumnRenamed("Indicator Code", "indicator_code") \
+        .withColumn("ingestion_timestamp", current_timestamp()) \
+        .withColumn("source_system", lit("world_bank_group_dload"))
     
-    try:
-        sdf = spark.createDataFrame(combined_df)
-        bronze_df = sdf.toDF(*[c.replace(": ", "_") for c in sdf.columns])
-        bronze_df = bronze_df \
-            .withColumn("ingestion_timestamp", current_timestamp()) \
-                .withColumn("source_system", lit("xlsx_file"))
+    try: 
         bronze_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{UK_GDP}")
         print(f"Created bronze table {SCHEMA_NAME}.{UK_GDP}")
     except FileNotFoundError as ae:
@@ -51,39 +53,21 @@ def bronze_uk_interest_rate(spark):
     """
     Loads and stores UK Bank of England interest rate data into the bronze layer.
 
-    Reads all xls files from `data/bank_of_england/bank_rate`, combines them
-    into a single Pandas DataFrame, casts all values to strings to preserve raw
-    structure, converts to a Spark DataFrame, and writes it to the bronze Delta table.
+    Reads csv file from `data/uk_interest_rate` into a pandas dataframe.
+    Converts to a Spark DataFrame, and writes it to the bronze Delta table.
 
     Args:
         spark (SparkSession): Active Spark session used for writing the data.
     """
-    base_path = os.path.join(os.path.dirname(__file__), "../../../data/bank_of_england/bank_rate")
-    excel_files = glob.glob(os.path.join(base_path, "*"))
-
-    all_dfs = []
-    for file in excel_files:
-        df = pd.read_excel(file, engine="xlrd")
-        all_dfs.append(df)
-        
-    combined_df = pd.concat(all_dfs, ignore_index=True)
-    combined_df = combined_df.astype(str)
-
-    cols = [c.strip().lower().replace(" ", "_").replace(":", "_") for c in combined_df.columns]
-
-    counts = 0
-    new_cols = []
-    for c in cols:
-        new_cols.append(f"{counts}_{c}")
-        counts += 1
-
-    combined_df.columns = new_cols
+    uk_ir_file = os.path.abspath("../data/uk_interest_rate/Bank Rate history and data  Bank of England Database.csv")
+    ir_df = pd.read_csv(uk_ir_file, header=0)
+    ir_df = ir_df.rename(columns={"Date Changed": "date_changed"})
 
     try:
-        bronze_df = spark.createDataFrame(combined_df)
+        bronze_df = spark.createDataFrame(ir_df)
         bronze_df = bronze_df \
             .withColumn("ingestion_timestamp", current_timestamp()) \
-                .withColumn("source_system", lit("xls_file"))
+                .withColumn("source_system", lit("bank_of_england_dload"))
         bronze_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{UK_INTEREST}")
         print(f"Created bronze table {SCHEMA_NAME}.{UK_INTEREST}")
     except FileNotFoundError as ae:
@@ -94,7 +78,15 @@ def bronze_uk_interest_rate(spark):
 
 def generate_bronze_macro_local_tables(spark):
     """
-    Generates bronze macro tables.
+    Build bronze macroeconomic tables for UK data.
+
+    Runs the ingestion functions for UK GDP and UK interest rate,
+    pulling raw data from the data files stored locally, cleaning it, and
+    saving each dataset into its bronze table.
+
+    Args:
+        spark (SparkSession): Active Spark session used to execute
+            the ingestion and persistence steps.
     """
     bronze_uk_gdp(spark)
     bronze_uk_interest_rate(spark)
