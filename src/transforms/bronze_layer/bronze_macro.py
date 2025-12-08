@@ -184,7 +184,15 @@ def bronze_fed_interest_rate(spark):
 
 def generate_bronze_macro_tables(spark):
     """
-    Generates bronze macro tables.
+    Build all bronze macroeconomic tables.
+
+    Runs the individual ingestion functions for UK and US unemployment,
+    CPI, GDP, and interest rate data, so each source table is pulled,
+    cleaned, and saved into its bronze version.
+
+    Args:
+        spark (SparkSession): Active Spark session used to execute
+            the ingestion and persistence steps.
     """
     bronze_uk_unemployment(spark)
     bronze_uk_cpi(spark)

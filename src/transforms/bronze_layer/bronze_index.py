@@ -12,12 +12,20 @@ DXY_TABLE_NAME = "bronze_dollar_index"
 logger = logging.getLogger(__name__)
 
 
-def create_bronze_sp500(spark):
-    ''' 
-    create bronze table for S&P500 index
-        schema: oil_analytics
-        table: bronze_sp500
-    '''
+def create_bronze_sp500(spark): 
+    """  
+    Create the bronze table for S&P 500 index data.
+
+    Fetches raw S&P 500 data via the ingestion function, converts it
+    into a Spark DataFrame, standardises column names, and adds
+    ingestion metadata. The processed dataset is stored in
+    `oil_analytics.bronze_sp500`.
+
+    Args:
+        spark (SparkSession): Active Spark session used to transform
+            and persist the dataset.
+    """
+    
     spy_df = fetch_SP500_data(spark)
     spark_spy_df = spark.createDataFrame(spy_df)
 
@@ -36,12 +44,17 @@ def create_bronze_sp500(spark):
 
 
 def create_bronze_ftse100(spark):
-    ''' 
-    create bronze table for FTSE 100 index
-        schema: oil_analytics
-        table: bronze_ftse100
-    
-    '''
+    """   
+    Create the bronze table for FTSE 100 index data.
+
+    Retrieves FTSE 100 data, converts it into a Spark DataFrame,
+    normalises column names, and appends ingestion metadata. The
+    resulting dataset is saved to `oil_analytics.bronze_ftse100`.
+
+    Args:
+        spark (SparkSession): Active Spark session used to transform
+            and persist the dataset.    
+    """
     ftse_df = fetch_ftse100_data(spark)
 
     spark_ftse_df = spark.createDataFrame(ftse_df)
@@ -60,19 +73,23 @@ def create_bronze_ftse100(spark):
 
 
 def create_bronze_dxy(spark):
-    ''' 
-    create bronze table for dollar index
-        schema: oil_analytics
-        table: bronze_dollar_index 
-    '''
+    """  
+    Create the bronze table for Dollar Index (DXY) data.
+
+    Pulls Dollar Index data, converts it into a Spark DataFrame,
+    standardises column names, and adds ingestion metadata. The
+    curated dataset is written to `oil_analytics.bronze_dollar_index`.
+
+    Args:
+        spark (SparkSession): Active Spark session used to transform
+            and persist the dataset.
+    """
     dxy_df = fetch_dollar_index_data(spark)
     spark_dxy_df = spark.createDataFrame(dxy_df)
     bronze_dxy_df = spark_dxy_df.toDF(*[c.replace(" ", "_") for c in spark_dxy_df.columns])
     bronze_dxy_df = bronze_dxy_df \
         .withColumn("ingestion_timestamp", current_timestamp()) \
         .withColumn("source_system", lit("yfinance"))
-
-                                
 
     try: 
         bronze_dxy_df.write.mode("append").saveAsTable(f"{SCHEMA_NAME}.{DXY_TABLE_NAME}")
@@ -84,6 +101,17 @@ def create_bronze_dxy(spark):
 
 
 def generate_bronze_index_tables(spark):
+    """
+    Build all bronze index tables in one step.
+
+    Runs the individual functions for S&P 500, FTSE 100, and Dollar
+    Index so each dataset is ingested, cleaned, and saved into its
+    bronze-level table.
+
+    Args:
+        spark (SparkSession): Active Spark session used to execute
+            the ingestion and persistence steps.
+    """
     create_bronze_sp500(spark)
     create_bronze_ftse100(spark)
     create_bronze_dxy(spark)

@@ -15,7 +15,21 @@ fred = Fred(api_key=FED_KEY)
 
 
 def fetch_unemployment_data_uk(spark):
-    '''fetch unemployment data from nomis API'''
+    """
+    Fetch UK unemployment data from the Nomis API.
+
+    Sends a request to the Nomis API endpoint, parses the JSON-stat
+    response into a Pyjstat dataset, and converts it into a Pandas
+    DataFrame. Handles HTTP and connection errors.
+
+    Args:
+        spark (SparkSession): Included for consistency with pipeline
+            functions, though not directly used here.
+
+    Returns:
+        pandas.DataFrame or None: Parsed unemployment data if successful,
+        otherwise None on error.
+    """
     try:
         response = requests.get(UK_UNEMPLOYMENT_URL)
         response.raise_for_status()
@@ -40,7 +54,20 @@ def fetch_unemployment_data_uk(spark):
 
     
 def fetch_cpi_data_uk(spark):
-    '''fetch inflation rates from ONS API monthly / quarterly / yearly'''
+    """
+    Fetch UK CPI (inflation rate) data from the ONS API.
+
+    Requests CPI data from the ONS endpoint, parses the raw response
+    into period/rate pairs, and converts them into a Spark DataFrame.
+    Supports monthly, quarterly, and yearly CPI values.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+
+    Returns:
+        pyspark.sql.DataFrame or None: CPI data if successful,
+        otherwise None on error.
+    """
     try:
         response = requests.get(UK_CPI_URL)
         response.raise_for_status()
@@ -72,7 +99,19 @@ def fetch_cpi_data_uk(spark):
 
 
 def fetch_fed_gdp(spark):
-    '''fetch gdp data from FRED API'''
+    """
+    Fetch US GDP data from the FRED API.
+
+    Retrieves GDP series from FRED, resets the index, renames columns,
+    and converts the result into a Spark DataFrame.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+
+    Returns:
+        pyspark.sql.DataFrame or None: GDP data if successful,
+        otherwise None on error.
+    """
     try:
         gdp = fred.get_series('GDP')
         gdp = gdp.reset_index()
@@ -85,7 +124,19 @@ def fetch_fed_gdp(spark):
 
 
 def fetch_fed_cpi(spark):
-    '''fetch cpi data from FRED API'''
+    """
+    Fetch US CPI data from the FRED API.
+
+    Retrieves CPI series (CPIAUCSL) from FRED, resets the index,
+    renames columns, and converts the result into a Spark DataFrame.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+
+    Returns:
+        pyspark.sql.DataFrame or None: CPI data if successful,
+        otherwise None on error.
+    """
     try:
         cpi = fred.get_series('CPIAUCSL') 
         cpi = cpi.reset_index()
@@ -98,7 +149,19 @@ def fetch_fed_cpi(spark):
 
 
 def fetch_fed_interest_rate(spark):
-    '''fetch interest rate data from FRED API'''
+    """
+    Fetch US Federal Funds interest rate data from the FRED API.
+
+    Retrieves the FEDFUNDS series from FRED, resets the index,
+    renames columns, and converts the result into a Spark DataFrame.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+
+    Returns:
+        pyspark.sql.DataFrame or None: Interest rate data if successful,
+        otherwise None on error.
+    """
     try:
         fed_rate = fred.get_series('FEDFUNDS')
         fed_rate = fed_rate.reset_index()
@@ -111,7 +174,19 @@ def fetch_fed_interest_rate(spark):
 
 
 def fetch_fed_unemployment(spark):
-    '''fetch unemployment rate data from FRED API'''
+    """
+    Fetch US unemployment rate data from the FRED API.
+
+    Retrieves the UNRATE series from FRED, resets the index,
+    renames columns, and converts the result into a Spark DataFrame.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+
+    Returns:
+        pyspark.sql.DataFrame or None: Unemployment data if successful,
+        otherwise None on error.
+    """
     try:
         unrate = fred.get_series('UNRATE')
         unrate = unrate.reset_index()

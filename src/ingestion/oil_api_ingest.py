@@ -9,7 +9,17 @@ from src.ingestion.load_config import load_config, read_client
 
 def handle_status(code, status_code, logger): 
   """
-  Handle different status codes and print corresponding messages.
+    Log and handle API response status codes.
+
+    Maps common HTTP error codes to messages and logs them 
+    with the provided logger. If the status code is not in
+    the predefined set, a generic "Unexpected error" message is
+    logged instead.
+
+    Args:
+        code (str): Identifier for the API request (e.g., commodity code).
+        status_code (int): HTTP status code returned by the API.
+        logger (logging.Logger): Logger instance used to record errors.
   """
   
   messages = {
@@ -27,8 +37,18 @@ def handle_status(code, status_code, logger):
 
 def fetch_oil_prices(spark, topic="energy_prices"):
   """
-  Fetch WTI crude oil, Brent crude oil, and natural gas prices from the OilPrice API.
-  Then sends the data to Kafka.
+    Retrieve energy price data from the OilPrice API and publish to Kafka.
+
+    Fetches WTI crude oil, Brent crude oil, and natural gas prices
+    using the configured API credentials. Each response is serialized
+    to JSON and sent to the specified Kafka topic. Handles connection
+    and request errors, logging issues as they occur.
+
+    Args:
+        spark: Active Spark session (not directly used,
+            but included for consistency with pipeline functions).
+        topic: Kafka topic to publish messages to. 
+            Defaults to "energy_prices".
   """
   logger = logging.getLogger(__name__)
 

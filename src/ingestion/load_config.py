@@ -2,7 +2,19 @@ import yaml
 from pathlib import Path
 
 def load_config(file="config/config.yaml"):
-    '''load api credentials'''
+    """
+    Load API configuration from a YAML file.
+
+    Resolves the repository root, reads the specified YAML config file,
+    and parses its contents into a Python dictionary.
+
+    Args:
+        file (str): Relative path to the YAML configuration file.
+            Defaults to "config/config.yaml".
+
+    Returns:
+        dict: Parsed configuration values from the YAML file.
+    """
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / file
     with open(config_path, "r") as f:
@@ -11,7 +23,19 @@ def load_config(file="config/config.yaml"):
 
 
 def load_client(file="config/client.properties"):
-    '''load kafka configuration'''
+    """
+    Load Kafka client configuration from a properties file.
+
+    Resolves the repository root, reads the specified client properties file,
+    and returns its raw contents as a string.
+
+    Args:
+        file (str): Relative path to the Kafka client properties file.
+            Defaults to "config/client.properties".
+
+    Returns:
+        str: Raw contents of the client properties file.
+    """
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / file
     with open(config_path, "r") as f:
@@ -20,7 +44,16 @@ def load_client(file="config/client.properties"):
 
 
 def read_client():
-  '''reads the kafka client configuration and returns it as a dict'''
+  """
+    Parse Kafka client configuration into a dictionary.
+
+    Reads the client properties file using `load_client`, splits each line
+    into key/value pairs, and ignores comments or empty lines. Produces a
+    dictionary suitable for initialising Kafka clients.
+
+    Returns:
+        dict: Kafka client configuration parameters.
+    """
   config = {}
   client = load_client()
   # with open("client.properties") as client:

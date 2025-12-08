@@ -1,22 +1,23 @@
 from pyspark.sql.functions import regexp_replace, col, to_date, date_format, desc
 
 
-def create_silver_energy_prices(spark, schema="oil_analytics", table="bronze_energy_prices"):
+SCHEMA_NAME = "oil_analytics"
+SILVER_TABLE_NAME = "silver_energy_prices"
+
+
+def create_silver_energy_prices(spark):
     """
-    Create silver energy prices table.
-        schema: oil_analytics
-        table: silver_energy_prices
+    Prepare and load curated energy price data into the silver layer.
+
+    Ingests from bronze layer and performs standardised transformations to 
+    normalise values, remove duplicates and ensure data integrity.
+    The cleansed dataset is then sorted by date and time before being written to the silver layer.
 
     Args:
-        spark: SparkSession
-        schema: default = oil_analytics
-        table: default = bronze_energy_prices
+        spark (SparkSession): Active Spark session.
     """
 
-    SCHEMA_NAME = "oil_analytics"
-    SILVER_TABLE_NAME = "silver_energy_prices"
-
-    energy_price_df = spark.table(f"{schema}.{table}")
+    energy_price_df = spark.table(f"oil_analytics.bronze_energy_prices")
 
     clean_ep_df = energy_price_df \
         .withColumn("price", regexp_replace(col("formatted"), "\\$", "" ).cast("double")) \
@@ -30,7 +31,9 @@ def create_silver_energy_prices(spark, schema="oil_analytics", table="bronze_ene
     removed_count = original_count - deduped_count
     print(f"Removed {removed_count} duplicate rows")
 
-    silver_ep_df = clean_ep_df.select("code", "price", "type", "date", "time", "source_system").orderBy(desc("date"), desc("time"))
+    silver_ep_df = clean_ep_df \
+        .select("code", "price", "type", "date", "time", "source_system") \
+            .orderBy(desc("date"), desc("time"))
 
     try:
         silver_ep_df.write.mode("append").saveAsTable(f"{SCHEMA_NAME}.{SILVER_TABLE_NAME}")
@@ -41,5 +44,12 @@ def create_silver_energy_prices(spark, schema="oil_analytics", table="bronze_ene
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{SILVER_TABLE_NAME}: {e}")
 
 
-def generate_silver_energy_price_table(spark, schema, table):
-    create_silver_energy_prices(spark, schema, table)
+def generate_silver_energy_price_table(spark):
+    """
+    Wrapper function to build silver energy price table.
+    Invokes `create_silver_energy_prices` function.
+
+    Args:
+        spark (SparkSession): Active Spark session.
+    """
+    create_silver_energy_prices(spark)
