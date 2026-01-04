@@ -1,4 +1,5 @@
-from pyspark.sql.functions import col, to_date, desc, format_number
+from pyspark.sql.functions import col, to_date, desc, format_number, row_number
+from pyspark.sql.window import Window
 
 
 def create_silver_index_tables(spark, schema="oil_analytics", tables=["bronze_sp500","bronze_ftse100","bronze_dollar_index"]):
@@ -33,11 +34,22 @@ def create_silver_index_tables(spark, schema="oil_analytics", tables=["bronze_sp
             .withColumn("High", format_number(col("High"), 2)) \
             .withColumn("Low", format_number(col("Low"), 2)) \
             .withColumn("Close", format_number(col("Close"), 2))
+        
+        silver_df = clean_df.select("Date", "Open", "High", "Low", "Close", "Volume", "source_system")
+        
+        window_spec = Window.partitionBy("Date").orderBy(desc("Close")) 
+        
+        silver_df_clean = (
+            silver_df
+            .withColumn("row_num", row_number().over(window_spec))
+            .filter(col("row_num") == 1)
+            .drop("row_num")
+        )
 
-        silver_df = clean_df.select("Date", "Open", "High", "Low", "Close", "Volume", "source_system").orderBy(desc("Date"))
+        silver_df_clean = silver_df_clean.orderBy(desc("Date"))
 
         try:
-            silver_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_table_name}")
+            silver_df_clean.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_table_name}")
             print(f"Created silver table {SCHEMA_NAME}.{silver_table_name}")
         except AnalysisException as ae:
             print(f"Analysis error when saving silver table: {ae}")
