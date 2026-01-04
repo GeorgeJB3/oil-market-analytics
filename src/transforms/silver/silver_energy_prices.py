@@ -1,4 +1,5 @@
-from pyspark.sql.functions import regexp_replace, col, to_date, date_format, desc
+from pyspark.sql.functions import *
+from pyspark.sql.window import Window
 
 
 SCHEMA_NAME = "oil_analytics"
@@ -10,7 +11,9 @@ def create_silver_energy_prices(spark):
     Prepare and load curated energy price data into the silver layer.
 
     Ingests from bronze layer and performs standardised transformations to 
-    normalise values, remove duplicates and ensure data integrity.
+    normalise values and ensure data integrity.
+    Uses a window function to keep only the latest record per code and date, 
+    ensuring duplicates are removed.
     The cleansed dataset is then sorted by date and time before being written to the silver layer.
 
     Args:
@@ -19,21 +22,19 @@ def create_silver_energy_prices(spark):
 
     energy_price_df = spark.table(f"oil_analytics.bronze_energy_prices")
 
-    clean_ep_df = energy_price_df \
-        .withColumn("price", regexp_replace(col("formatted"), "\\$", "" ).cast("double")) \
+    format_ep_df = energy_price_df \
+        .withColumn("spot_price", regexp_replace(col("formatted"), "\\$", "" ).cast("double")) \
         .withColumn("date", to_date(col("created_at"))) \
         .withColumn("time", date_format(col("created_at"), "HH:mm:ss"))
 
-    clean_ep_df = clean_ep_df.dropDuplicates(["code", "price", "date", "time"])
-
-    original_count = energy_price_df.count()
-    deduped_count = clean_ep_df.count()
-    removed_count = original_count - deduped_count
-    print(f"Removed {removed_count} duplicate rows")
+    window = Window.partitionBy("date", "code").orderBy(desc("time"))
+    clean_ep_df = format_ep_df.withColumn("row_num", row_number().over(window)) \
+        .filter(col("row_num") == 1) \
+        .drop("row_num")
 
     silver_ep_df = clean_ep_df \
-        .select("code", "price", "type", "date", "time", "source_system") \
-            .orderBy(desc("date"), desc("time"))
+        .select("code", "spot_price", "date", "time", "source_system") \
+        .orderBy(desc("date"))
 
     try:
         silver_ep_df.write.mode("append").saveAsTable(f"{SCHEMA_NAME}.{SILVER_TABLE_NAME}")
