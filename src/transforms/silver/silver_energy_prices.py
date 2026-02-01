@@ -1,5 +1,6 @@
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
+from pyspark.sql.utils import AnalysisException
 
 
 SCHEMA_NAME = "oil_analytics"
@@ -33,14 +34,14 @@ def create_silver_energy_prices(spark):
         .drop("row_num")
 
     silver_ep_df = clean_ep_df \
-        .select("code", "spot_price", "date", "time", "source_system") \
+        .select("code", "spot_price", "date", "source_system") \
         .orderBy(desc("date"))
 
     try:
         silver_ep_df.write.mode("append").saveAsTable(f"{SCHEMA_NAME}.{SILVER_TABLE_NAME}")
         print(f"Created silver table {SCHEMA_NAME}.{SILVER_TABLE_NAME}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{SILVER_TABLE_NAME}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{SILVER_TABLE_NAME}: {e}")
 

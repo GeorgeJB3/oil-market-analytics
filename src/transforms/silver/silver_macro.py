@@ -1,5 +1,6 @@
-from pyspark.sql.functions import col, trim, split, to_date, desc, avg, round, lit, rlike, format_number
+from pyspark.sql.functions import *
 from pyspark.sql.utils import AnalysisException
+from pyspark.sql.window import Window
 
 
 SCHEMA_NAME = "oil_analytics"
@@ -35,22 +36,21 @@ def create_silver_uk_unemployment(spark):
 
     uk_unemployment_df = uk_unemployment_df \
         .groupBy("date") \
-            .agg(round(avg("value"), 1).alias("unemployment_rate"))
+            .agg(avg("value").alias("uk_unemployment_rate"))
 
     silver_uk_unem_df = (
         uk_unemployment_df
-        .withColumnRenamed("unemployment_rate", "unemployment_rate_%")
         .withColumn("from_date", to_date(trim(split(col("date"), "-").getItem(0)), "MMM yyyy")) \
         .withColumn("to_date", to_date(trim(split(col("date"), "-").getItem(1)), "MMM yyyy"))   
         .withColumn("source_system", lit("nomisAPI"))
-        .select("from_date", "to_date", "unemployment_rate_%", "source_system").orderBy(desc("from_date"))    
+        .select("from_date", "to_date", "uk_unemployment_rate", "source_system").orderBy(desc("from_date"))    
     )
 
     try:
         silver_uk_unem_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_uk_unemployment}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_uk_unemployment}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_uk_unemployment}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_uk_unemployment}: {e}")
 
@@ -70,7 +70,7 @@ def create_silver_fed_unemployment(spark):
 
     silver_fed_unem_df = (   fed_unemployment_df
     .withColumn("date", to_date(col("date"))) \
-    .withColumnRenamed("value", "unemployment_rate_%") \
+    .withColumnRenamed("fed_unemployment_rate", "us_unemployment_rate") \
     .drop("ingestion_timestamp") \
     .orderBy(desc("date"))
     )
@@ -78,7 +78,7 @@ def create_silver_fed_unemployment(spark):
         silver_fed_unem_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_fed_unemployment}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_fed_unemployment}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_fed_unemployment}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_fed_unemployment}: {e}")
 
@@ -100,15 +100,15 @@ def create_silver_uk_cpi(spark):
     silver_uk_cpi_df = (
         uk_cpi_df
         .withColumn("date", to_date(col("period"), "yyyy MMM"))
-        .withColumnRenamed("rate", "cpi_rate_%")
-        .select("date", "cpi_rate_%", "source_system")
+        .withColumnRenamed("rate", "uk_cpi_rate")
+        .select("date", "uk_cpi_rate", "source_system")
         .orderBy(desc("date"))
         )
     try:
         silver_uk_cpi_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_uk_cpi}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_uk_cpi}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_uk_cpi}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_uk_cpi}: {e}")
 
@@ -124,20 +124,22 @@ def create_silver_fed_cpi(spark):
     Args:
         spark (SparkSession): Active Spark session.
     """
+    window_spec = Window.orderBy("date")
+
     fed_cpi_df = spark.table("oil_analytics.bronze_fed_cpi")
 
     silver_fed_cpi_df = (
         fed_cpi_df
         .withColumn("date", to_date("date"))
-        .withColumnRenamed("value", "cpi_rate_%")
-        .drop("ingestion_timestamp")
+        .withColumn("us_cpi_rate", (col("fed_cpi_rate") / lag("fed_cpi_rate", 12).over(window_spec) - 1) * 100)
+        .drop("ingestion_timestamp", "fed_cpi_rate")
         .orderBy(desc("date"))
         )
     try:
         silver_fed_cpi_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_fed_cpi}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_fed_cpi}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_fed_cpi}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_fed_cpi}: {e}")
 
@@ -154,8 +156,8 @@ def create_silver_uk_gdp(spark):
     """
     uk_gdp_df = spark.table("oil_analytics.bronze_uk_gdp")
 
-    uk_gdp_df = uk_gdp_df.select("year", "gdp_rate_%", "source_system") \
-        .withColumn("gdp_rate_%", format_number(col("gdp_rate_%"), 2)) \
+    uk_gdp_df = uk_gdp_df.select("year", "uk_gdp_rate_yoy", "source_system") \
+            .orderBy(desc("year"))
 
     silver_uk_gdp_df = uk_gdp_df.filter(col("year").rlike(r"\d{4}"))
 
@@ -163,7 +165,7 @@ def create_silver_uk_gdp(spark):
         silver_uk_gdp_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_uk_gdp}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_uk_gdp}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_uk_gdp}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_uk_gdp}: {e}")
 
@@ -184,7 +186,7 @@ def create_silver_fed_gdp(spark):
     silver_fed_gdp_df = (
         fed_gdp_df
         .withColumn("date", to_date("date"))
-        .withColumnRenamed("value", "gdp_usd_billion")
+        .withColumnRenamed("fed_gdp_rate_yoy", "us_gdp_rate_yoy")
         .drop("ingestion_timestamp")
         .orderBy(desc("date"))
         )
@@ -192,7 +194,7 @@ def create_silver_fed_gdp(spark):
         silver_fed_gdp_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_fed_gdp}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_fed_gdp}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_fed_gdp}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_fed_gdp}: {e}")
 
@@ -212,14 +214,14 @@ def create_silver_uk_interest_rate(spark):
 
     silver_uk_interest_rate_df = uk_interest_rate_df.select(
         to_date(col("date_changed"), "dd MMM yy").alias("date"),
-        format_number(col("Rate"), 2).alias("interest_rate_%"),
+        col("Rate").alias("uk_interest_rate"),
         col("source_system")
     )
     try:
         silver_uk_interest_rate_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_uk_interest_rate}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_uk_interest_rate}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_uk_interest_rate}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_uk_interest_rate}: {e}")
 
@@ -240,7 +242,7 @@ def create_silver_fed_interest_rate(spark):
     silver_fed_interest_rate_df = (
         fed_interest_rate_df
         .withColumn("date", to_date("date"))
-        .withColumnRenamed("value", "interest_rate_%")
+        .withColumnRenamed("fed_interest_rate", "us_interest_rate")
         .drop("ingestion_timestamp")
         .orderBy(desc("date"))
         )
@@ -248,7 +250,7 @@ def create_silver_fed_interest_rate(spark):
         silver_fed_interest_rate_df.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_fed_interest_rate}")
         print(f"Created silver table {SCHEMA_NAME}.{silver_fed_interest_rate}")
     except AnalysisException as ae:
-        print(f"Analysis error when saving silver table: {ae}")
+        print(f"Analysis error when saving silver table {SCHEMA_NAME}.{silver_fed_interest_rate}: {ae}")
     except Exception as e:
         print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_fed_interest_rate}: {e}")
 

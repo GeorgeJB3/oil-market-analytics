@@ -1,5 +1,6 @@
 from pyspark.sql.functions import col, to_date, desc, format_number, row_number
 from pyspark.sql.window import Window
+from pyspark.sql.utils import AnalysisException
 
 
 def create_silver_index_tables(spark, schema="oil_analytics", tables=["bronze_sp500","bronze_ftse100","bronze_dollar_index"]):
@@ -16,8 +17,6 @@ def create_silver_index_tables(spark, schema="oil_analytics", tables=["bronze_sp
         schema: Source schema containing bronze tables. Default = oil_analytics
         tables: List of bronze table names. Default = ["bronze_sp500","bronze_ftse100","bronze_dollar_index"]
     """
-
-    SCHEMA_NAME = "oil_analytics"
 
     for table in tables:
 
@@ -49,12 +48,12 @@ def create_silver_index_tables(spark, schema="oil_analytics", tables=["bronze_sp
         silver_df_clean = silver_df_clean.orderBy(desc("Date"))
 
         try:
-            silver_df_clean.write.mode("overwrite").saveAsTable(f"{SCHEMA_NAME}.{silver_table_name}")
-            print(f"Created silver table {SCHEMA_NAME}.{silver_table_name}")
+            silver_df_clean.write.mode("overwrite").saveAsTable(f"{schema}.{silver_table_name}")
+            print(f"Created silver table {schema}.{silver_table_name}")
         except AnalysisException as ae:
-            print(f"Analysis error when saving silver table: {ae}")
+            print(f"Analysis error when saving silver table {schema}.{silver_table_name}: {ae}")
         except Exception as e:
-            print(f"Unexpected error saving silver table {SCHEMA_NAME}.{silver_table_name}: {e}")
+            print(f"Unexpected error saving silver table {schema}.{silver_table_name}: {e}")
 
 
 def generate_silver_index_tables(spark):

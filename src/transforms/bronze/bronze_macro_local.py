@@ -29,7 +29,7 @@ def bronze_uk_gdp(spark):
     unpivot_df = gdp_df.melt(
         id_vars = ["Country Name", "Country Code", "Indicator Name", "Indicator Code"],
         var_name = "year",
-        value_name = "gdp_rate_%"
+        value_name = "uk_gdp_rate_yoy"
     )
     sdf = spark.createDataFrame(unpivot_df)
     bronze_df = sdf \

@@ -102,7 +102,7 @@ def fetch_fed_gdp(spark):
     """
     Fetch US GDP data from the FRED API.
 
-    Retrieves GDP series from FRED, resets the index, renames columns,
+    Retrieves GDP annual growth rates from FRED, resets the index, renames columns,
     and converts the result into a Spark DataFrame.
 
     Args:
@@ -113,9 +113,9 @@ def fetch_fed_gdp(spark):
         otherwise None on error.
     """
     try:
-        gdp = fred.get_series('GDP')
+        gdp = fred.get_series('A191RL1A225NBEA')
         gdp = gdp.reset_index()
-        gdp.columns = ['date','value']
+        gdp.columns = ['date','fed_gdp_rate_yoy']
         gdp = spark.createDataFrame(gdp)
         return gdp
     except Exception as e:
@@ -140,7 +140,7 @@ def fetch_fed_cpi(spark):
     try:
         cpi = fred.get_series('CPIAUCSL') 
         cpi = cpi.reset_index()
-        cpi.columns = ['date','value']
+        cpi.columns = ['date','fed_cpi_rate']
         cpi = spark.createDataFrame(cpi)
         return cpi
     except Exception as e:
@@ -165,7 +165,7 @@ def fetch_fed_interest_rate(spark):
     try:
         fed_rate = fred.get_series('FEDFUNDS')
         fed_rate = fed_rate.reset_index()
-        fed_rate.columns = ['date','value']
+        fed_rate.columns = ['date','fed_interest_rate']
         fed_rate = spark.createDataFrame(fed_rate)
         return fed_rate
     except Exception as e:
@@ -190,7 +190,7 @@ def fetch_fed_unemployment(spark):
     try:
         unrate = fred.get_series('UNRATE')
         unrate = unrate.reset_index()
-        unrate.columns = ['date','value']
+        unrate.columns = ['date','fed_unemployment_rate']
         unrate = spark.createDataFrame(unrate)
         return unrate
     except Exception as e:
