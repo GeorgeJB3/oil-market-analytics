@@ -86,13 +86,11 @@ These features support cross-asset relationship analysis and regime identificati
 
 ---
 
-## Financial & Macro Features (In Progress)
-
-Financial and macroeconomic indicators are currently being engineered and prepared for integration into the Gold layer, including:
+## Financial & Macro Features
 
 * Dollar Index (DXY)
 * Equity market indices
-* UK unemployment data
+* UK & US unemployment, inflation and GDP data
 
 These features will provide broader economic context once joined with energy-market features.
 
@@ -139,16 +137,11 @@ The Gold layer is currently at **MVP stage**:
 * Daily returns, rolling statistics, spreads, correlations
 * Spark-based feature transformations
 
-### In Progress
-
-* Financial and macro feature engineering
-* Final Gold-layer joins
-
 ### Planned Extensions
 
 * Dashboarding and visualisation layer
 * Additional statistical and market features
-* SQL-based access patterns (where appropriate)
+* Shipping routes and weather data
 * Orchestration and data quality checks
 
 ---
