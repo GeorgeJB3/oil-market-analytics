@@ -36,14 +36,14 @@ def create_silver_uk_unemployment(spark):
 
     uk_unemployment_df = uk_unemployment_df \
         .groupBy("date") \
-            .agg(avg("value").alias("uk_unemployment_rate"))
+            .agg(avg("value").alias("uk_unemployment_rate_1m"))
 
     silver_uk_unem_df = (
         uk_unemployment_df
         .withColumn("from_date", to_date(trim(split(col("date"), "-").getItem(0)), "MMM yyyy")) \
         .withColumn("to_date", to_date(trim(split(col("date"), "-").getItem(1)), "MMM yyyy"))   
         .withColumn("source_system", lit("nomisAPI"))
-        .select("from_date", "to_date", "uk_unemployment_rate", "source_system").orderBy(desc("from_date"))    
+        .select("from_date", "to_date", "uk_unemployment_rate_1m", "source_system").orderBy(desc("from_date"))    
     )
 
     try:
@@ -70,7 +70,7 @@ def create_silver_fed_unemployment(spark):
 
     silver_fed_unem_df = (   fed_unemployment_df
     .withColumn("date", to_date(col("date"))) \
-    .withColumnRenamed("fed_unemployment_rate", "us_unemployment_rate") \
+    .withColumnRenamed("fed_unemployment_rate", "us_unemployment_rate_3m") \
     .drop("ingestion_timestamp") \
     .orderBy(desc("date"))
     )
@@ -100,8 +100,8 @@ def create_silver_uk_cpi(spark):
     silver_uk_cpi_df = (
         uk_cpi_df
         .withColumn("date", to_date(col("period"), "yyyy MMM"))
-        .withColumnRenamed("rate", "uk_cpi_rate")
-        .select("date", "uk_cpi_rate", "source_system")
+        .withColumnRenamed("rate", "uk_inflation_rate_1m")
+        .select("date", "uk_inflation_rate_1m", "source_system")
         .orderBy(desc("date"))
         )
     try:
@@ -131,7 +131,7 @@ def create_silver_fed_cpi(spark):
     silver_fed_cpi_df = (
         fed_cpi_df
         .withColumn("date", to_date("date"))
-        .withColumn("us_cpi_rate", (col("fed_cpi_rate") / lag("fed_cpi_rate", 12).over(window_spec) - 1) * 100)
+        .withColumn("us_inflation_rate_1m", (col("fed_cpi_rate") / lag("fed_cpi_rate", 12).over(window_spec) - 1) * 100)
         .drop("ingestion_timestamp", "fed_cpi_rate")
         .orderBy(desc("date"))
         )
@@ -214,7 +214,7 @@ def create_silver_uk_interest_rate(spark):
 
     silver_uk_interest_rate_df = uk_interest_rate_df.select(
         to_date(col("date_changed"), "dd MMM yy").alias("date"),
-        col("Rate").alias("uk_interest_rate"),
+        col("Rate").alias("uk_interest_rate_3m"),
         col("source_system")
     )
     try:
@@ -242,7 +242,7 @@ def create_silver_fed_interest_rate(spark):
     silver_fed_interest_rate_df = (
         fed_interest_rate_df
         .withColumn("date", to_date("date"))
-        .withColumnRenamed("fed_interest_rate", "us_interest_rate")
+        .withColumnRenamed("fed_interest_rate", "us_interest_rate_1m")
         .drop("ingestion_timestamp")
         .orderBy(desc("date"))
         )
