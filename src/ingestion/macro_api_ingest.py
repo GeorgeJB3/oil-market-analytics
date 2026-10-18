@@ -1,5 +1,6 @@
 import json
 import requests
+import pandas as pd
 
 from pyjstat import pyjstat
 from fredapi import Fred
@@ -90,7 +91,7 @@ def fetch_cpi_data_uk(spark):
             period, rate = line.split(',')
             rows.append({"period": period.split('"')[1].strip(), "rate": float(rate.split('"')[1].strip())})
 
-        full_cpi_df = spark.createDataFrame(rows)
+        full_cpi_df = pd.DataFrame(rows)
 
         return full_cpi_df
     except Exception as e:
