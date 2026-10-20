@@ -1,8 +1,10 @@
 import logging
-
+import pandas as pd
+import datetime
 from pyspark.sql.functions import lit, current_timestamp
 from pyspark.sql.utils import AnalysisException
 from src.ingestion.index_ingest import fetch_SP500_data, fetch_ftse100_data, fetch_dollar_index_data
+from src.ingestion.index import IndexSeries, YfinanceFetcher
 
 SCHEMA_NAME = "oil_analytics"
 SP_TABLE_NAME = "bronze_sp500"
@@ -10,6 +12,22 @@ FTSE_TABLE_NAME = "bronze_ftse100"
 DXY_TABLE_NAME = "bronze_dollar_index"
 
 logger = logging.getLogger(__name__)
+
+current_time = datetime.datetime.now()
+
+index_to_fetch = {"SPY": "S&P_500",
+         "^FTSE": "FTSE 100",
+         "dx-y.nyb": "DXY"}
+
+# NOTE: consolidate into 1 table and update dedupe logic in silver layer
+
+def create_bronze_index_tables(index_to_fetch):
+    df = pd.DataFrame
+    for ticker, name in index_to_fetch.items():
+        f"{name}_df" = YfinanceFetcher(IndexSeries(ticker=ticker, name=name))
+        # f"{name}_df"["index"] = ticker
+        f"{name}_df"["ingestion_timestamp"] = current_time
+        f"{name}_df"["source_system"] = "yfinance"
 
 
 def create_bronze_sp500(spark): 
